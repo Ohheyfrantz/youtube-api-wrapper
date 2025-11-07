@@ -10,7 +10,7 @@ export function proxy(req: NextRequest) {
         return NextResponse.json({
             error: {
                 code: 403,
-                message: 'Method does not allow unauthorized access.',
+                message: 'Method does not allow unauthorized access 🔒.',
                 details: {
                     message: 'Please provide a valid service token in the authorization header.',
                     reason: 'FORBIDDEN'
