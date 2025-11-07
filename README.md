@@ -115,5 +115,3 @@ Each video entry includes live status metadata populated via `getVideoLiveStatus
 - Each list currently returns up to 10 entries (see `app/youtube-service/route.ts:32-36`). Adjust the constants there if another service needs more results.
 - The service simply proxies to the YouTube Data API, so apply your own caching/rate limiting if you expect heavy traffic.
 - To test without hitting YouTube, you can stub the fetch calls inside `createYoutubeClient` or wrap it behind a feature flag.
-
-Paste this block over the boilerplate in `README.md`, keeping the existing “Deploy on Vercel” section if you still need it. Let me know if you’d like me to reorganize the content once write access is available.
