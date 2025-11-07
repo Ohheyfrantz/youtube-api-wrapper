@@ -13,7 +13,7 @@ function applyCorsHeaders(res: NextResponse, origin: string | null) {
     return res;
 }
 
-export function proxy(req: NextRequest) {
+export default function middleware(req: NextRequest) {
     const origin = req.headers.get('origin');
 
     if (req.method === 'OPTIONS') {
@@ -42,6 +42,10 @@ export function proxy(req: NextRequest) {
     return applyCorsHeaders(response, origin);
 }
 
+export const proxy = middleware;
+
 export const config = {
-    matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+    matcher: [
+        '/((?!_next/static|_next/image|favicon.ico).*)',
+    ],
 };
