@@ -1,40 +1,119 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/create-next-app).
+# Left Click Service API
 
-## Getting Started
+Left Click Service API is a lightweight Next.js (App Router) service that wraps the YouTube Data API v3 to surface a channel’s uploads, most popular videos, and “for you” suggestions. Everything is exposed via simple HTTP endpoints so internal services can ingest YouTube data without touching the YouTube API directly.
 
-First, run the development server:
+## Prerequisites
+
+- Node.js 18+ and npm (or pnpm/bun/yarn) for running the service.
+- A YouTube Data API v3 key with `youtube.readonly` access.
+- A shared service token string that all callers must send with each request.
+
+## Local Setup
+
+1. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+2. Copy the sample environment file and fill in your secrets:
+
+   ```bash
+   cp example.env .env.local
+   ```
+
+   | Variable       | Purpose                                                                 |
+   | -------------- | ----------------------------------------------------------------------- |
+   | `SERVICE_TOKEN`| the `authorization` header in `middleware.ts:4`. |
+   | `YT_API_KEY`   | Optional placeholder if you want to store a default API key locally.    |
+
+3. Run the dev server:
+
+   ```bash
+   npm run dev
+   ```
+
+   The API will listen on `http://localhost:3000` by default.
+
+## Authentication & Headers
+
+Every request passes through the global middleware (`middleware.ts:4`), so missing or incorrect credentials never reach the route handlers.
+
+| Header               | Required | Description                                                                                 |
+| -------------------- | -------- | ------------------------------------------------------------------------------------------- |
+| `authorization`      | Yes      | Must exactly match the `SERVICE_TOKEN` value. Requests are rejected with 401 otherwise.     |
+| `x-youtube-api-key`  | Yes*     | YouTube Data API key forwarded to `createYoutubeClient` (`app/youtube-service/route.ts:9`). |
+
+\*Only `/youtube-service` needs the YouTube key; the root health check does not.
+
+## Endpoints
+
+### `GET /`
+
+Health check that proves the service is online.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+curl -H "authorization: <SERVICE_TOKEN>" http://localhost:3000/
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**Response**
 
-You can start editing the page by modifying `app/route.ts`. The page auto-updates as you edit the file.
+```json
+{ "message": "Hi there! 👋, welcome to Left Click Services API." }
+```
 
-## Learn More
+### `GET /youtube-service`
 
-To learn more about Next.js, take a look at the following resources:
+Resolves a channel handle or URL, then returns the newest uploads plus two curated lists (popular and “for you”).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**Query Parameters**
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Name | Required | Description |
+| ---- | -------- | ----------- |
+| `url` | Yes | Channel handle or URL such as `https://www.youtube.com/@leftclick`. |
 
-## Deploy on Vercel
+**Sample Request**
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+curl "http://localhost:3000/youtube-service?url=https://www.youtube.com/@leftclick" \
+  -H "authorization: <SERVICE_TOKEN>" \
+  -H "x-youtube-api-key: <YOUR_YT_API_KEY>"
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Success Response**
 
-## API Routes
+```json
+{
+  "success": true,
+  "channelId": "UCxxxx",
+  "uploadsPlaylistId": "UUxxxx",
+  "videos": [
+    {
+      "videoId": "abc123",
+      "title": "Latest upload",
+      "publishedAt": "2024-05-01T12:34:56Z",
+      "liveBroadcastContent": "none",
+      "liveStreamingDetails": null
+    }
+  ],
+  "popularVideos": [ /* ordered by viewCount */ ],
+  "forYou": [ /* ordered by relevance */ ]
+}
+```
 
-This directory contains example API routes for the headless API app.
+Each video entry includes live status metadata populated via `getVideoLiveStatuses` (`app/lib/youtubeServices.ts:41`), so callers can tell whether a video is live/upcoming.
 
-For more details, see [route.js file convention](https://nextjs.org/docs/app/api-reference/file-conventions/route).
+**Error Responses**
+
+- `400` – Missing `url` query param or `x-youtube-api-key` header.
+- `401` – `authorization` header does not match `SERVICE_TOKEN`.
+- `500` – Upstream YouTube errors or unexpected failures; the body contains `{ "success": false, "error": "<message>" }`.
+
+## Operational Notes
+
+- Only YouTube handles (`https://www.youtube.com/@handle`) are supported today (`app/lib/youtubeServices.ts:18`); other channel URL formats will raise “Unable to resolve channel”.
+- Each list currently returns up to 10 entries (see `app/youtube-service/route.ts:32-36`). Adjust the constants there if another service needs more results.
+- The service simply proxies to the YouTube Data API, so apply your own caching/rate limiting if you expect heavy traffic.
+- To test without hitting YouTube, you can stub the fetch calls inside `createYoutubeClient` or wrap it behind a feature flag.
+
+Paste this block over the boilerplate in `README.md`, keeping the existing “Deploy on Vercel” section if you still need it. Let me know if you’d like me to reorganize the content once write access is available.
