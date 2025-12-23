@@ -6,13 +6,29 @@ Left Click Service API is a lightweight Next.js (App Router) service that wraps 
 
 - Node.js 18+ and npm (or pnpm/bun/yarn) for running the service.
 - A YouTube Data API v3 key with `youtube.readonly` access.
-- A shared service token string that all callers must send with each request.
+
+## Environment Variables
+
+This service has one optional environment variable:
+
+| Variable       | Required | Description                                                                 |
+| -------------- | -------- | --------------------------------------------------------------------------- |
+| `YT_API_KEY`   | No       | Optional default YouTube Data API key. If not set, clients must provide their own key via the `x-youtube-api-key` header. |
+
+### Getting Your YouTube API Key
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the **YouTube Data API v3** for your project
+4. Go to **Credentials** → **Create Credentials** → **API Key**
+5. (Optional) Restrict the key to only YouTube Data API v3 for security
+6. Copy the API key and use it as your `YT_API_KEY` or pass it in requests
 
 ## Local Setup
+environment variable. Requests are rejected with 403 Forbidden otherwise. |
+| `x-youtube-api-key`  | Yes*     | YouTube Data API v3 key used to make requests to YouTube. If `YT_API_KEY` is set as an environment variable, you can use that value here. |
 
-1. Install dependencies:
-
-   ```bash
+\*Only `/youtube-service` require
    npm install
    ```
 
@@ -22,10 +38,11 @@ Left Click Service API is a lightweight Next.js (App Router) service that wraps 
    cp example.env .env.local
    ```
 
-   | Variable       | Purpose                                                                 |
-   | -------------- | ----------------------------------------------------------------------- |
-   | `SERVICE_TOKEN`| the `authorization` header in `middleware.ts:4`. |
-   | `YT_API_KEY`   | Optional placeholder if you want to store a default API key locally.    |
+   Edit `.env.local` and optionally add your YouTube API key:
+
+   ```env
+   YT_API_KEY="your-youtube-api-key-here"  # Optional
+   ```
 
 3. Run the dev server:
 
@@ -53,7 +70,7 @@ Every request passes through the global middleware (`middleware.ts:4`), so missi
 Health check that proves the service is online.
 
 ```bash
-curl -H "authorization: <SERVICE_TOKEN>" http://localhost:3000/
+curl http://localhost:3000/
 ```
 
 **Response**
@@ -76,7 +93,6 @@ Resolves a channel handle or URL, then returns the newest uploads plus two curat
 
 ```bash
 curl "http://localhost:3000/youtube-service?url=https://www.youtube.com/@leftclick" \
-  -H "authorization: <SERVICE_TOKEN>" \
   -H "x-youtube-api-key: <YOUR_YT_API_KEY>"
 ```
 
@@ -106,12 +122,36 @@ Each video entry includes live status metadata populated via `getVideoLiveStatus
 **Error Responses**
 
 - `400` – Missing `url` query param or `x-youtube-api-key` header.
-- `401` – `authorization` header does not match `SERVICE_TOKEN`.
 - `500` – Upstream YouTube errors or unexpected failures; the body contains `{ "success": false, "error": "<message>" }`.
+
+## Deployment
+
+### Environment Variables in Production
+
+When deploying to Vercel, Netlify, or other platforms:
+
+1. Optionally set `YT_API_KEY` if you want to provide a default key for users
+2. **Never commit `.env.local` or `.env.production.local` to git** – they're already excluded via `.gitignore`
+
+### Security Checklist Before Going Public
+
+- ✅ Ensure `.env*` files are in `.gitignore` (already configured)
+- ✅ Verify no secrets are hardcoded in source files
+- ✅ Consider adding rate limiting to prevent API abuse
+- ✅ If you set `YT_API_KEY`, restrict it to specific APIs in Google Cloud Console
+- ✅ Monitor your deployment for unexpected traffic patterns
 
 ## Operational Notes
 
-- Only YouTube handles (`https://www.youtube.com/@handle`) are supported today (`app/lib/youtubeServices.ts:18`); other channel URL formats will raise “Unable to resolve channel”.
-- Each list currently returns up to 10 entries (see `app/youtube-service/route.ts:32-36`). Adjust the constants there if another service needs more results.
-- The service simply proxies to the YouTube Data API, so apply your own caching/rate limiting if you expect heavy traffic.
-- To test without hitting YouTube, you can stub the fetch calls inside `createYoutubeClient` or wrap it behind a feature flag.
+- Only YouTube handles (`https://www.youtube.com/@handle`) are supported today; other channel URL formats will raise "Unable to resolve channel".
+- Each list currently returns up to 10 entries. Adjust the constants in [app/youtube-service/route.ts](app/youtube-service/route.ts) if you need more results.
+- The service proxies to the YouTube Data API without caching, so consider implementing your own caching/rate limiting for high-traffic scenarios.
+- YouTube Data API has daily quota limits – monitor your usage in the Google Cloud Console.
+
+## Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request.
+
+## License
+
+MIT
