@@ -129,7 +129,3 @@ Each video entry includes live status metadata, so callers can tell whether a vi
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request.
-
-## License
-
-MIT
