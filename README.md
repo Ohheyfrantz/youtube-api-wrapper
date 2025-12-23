@@ -1,6 +1,6 @@
 # YouTube API Wrapper
 
-A lightweight Next.js (App Router) service that wraps the YouTube Data API v3 to surface a channel's uploads, most popular videos, and "for you" suggestions. Everything is exposed via simple HTTP endpoints so applications can ingest YouTube data without touching the YouTube API directly.
+A lightweight Next.js (App Router) service that wraps the YouTube Data API v3 to surface a channel's uploads, most popular videos, and "for you" suggestions. Everything is exposed via simple HTTP endpoints so applications can ingest YouTube data without needing to navigate through the complexity of the YouTube API.
 
 ## Prerequisites
 
